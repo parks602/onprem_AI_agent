@@ -65,6 +65,17 @@ def get_use_item_log(user_id, user_type, item_name, start_date, end_date):
     return {"status": "success", "logs": []}
 
 
+@register_tool
+def get_user_zeny_log(user_id, start_date, end_date):
+    query = f"select price from itemlog where srcAccountID = {user_id}, logtime"
+    result = """
+    srcAccountID | logtime               | price       | action
+    user001      | 2025-03-15 16:15:00   | 2,500,000   |   3
+    user001      | 2025-03-15 16:15:10   | 3,000,000   |   6
+    """
+    return result
+
+
 # EVENT_TOOLS
 @register_tool
 def get_event_item_usage(user_id, user_type, event_name, start_date, end_date):

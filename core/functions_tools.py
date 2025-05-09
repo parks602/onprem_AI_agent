@@ -16,6 +16,7 @@
 아이템
 1. get_get_item_log: 지정된 유저의 아이템 획득 로그를 조회합니다.
 2. get_use_item_log: 지정된 유저의 아이템 사용 로그를 조회합니다.
+3. get_user_zeny_log: 지정된 유저의 지정된 날짜 동안의 제니 사용 로그를 조회합니다.
 
 이벤트
 1. get_event_item_usage: 지정된 유저의 이벤트 아이템 사용 내역을 조회합니다.
@@ -90,6 +91,15 @@ ACCOUNT_TOOLS = [
     },
 ]
 ITEM_TOOLS = [
+    {
+        "name": "get_user_zeny_log",
+        "description": "Inquires the '제니(Zeny)' usage log for the specified date of the specified user.",
+        "parameters": {
+            "user_id": {"type": "str", "description": "계정 ID 또는 캐릭터 이름"},
+            "start_date": {"type": "str", "description": "조회 시작일 (YYYY-MM-DD)"},
+            "end_date": {"type": "str", "description": "조회 종료일 (YYYY-MM-DD)"},
+        },
+    },
     {
         "name": "get_get_item_log",
         "description": "지정된 유저의 아이템 획득 로그를 조회합니다.",

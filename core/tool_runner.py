@@ -1,5 +1,6 @@
 from core.functions_tools import get_category_tools
 from core.tools import function_registry
+from core.query_module import ConversationState
 
 
 def get_item_usage_count(user_id, user_type, item_name, start_date, end_date):
@@ -11,10 +12,18 @@ def get_account_info(account_id: str) -> str:
     return f"{account_id} 계정의 캐릭터 목록과 최근 접속 기록입니다."
 
 
-def run_tool_response(function_name_list, function_param_list):
+def run_tool_response(state: ConversationState):
     """
     사용자가 선택한 함수 목록을 실행하고 결과를 반환합니다.
     """
-    for fn_name, args in zip(function_name_list, function_param_list):
-        result = function_registry[fn_name](**args)
-        print(f"{fn_name} 실행 결과:", result)
+    print(state.subjects)
+    for subject in state.subjects:
+        print(subject)
+        for function in subject["functions"]:
+            result = function_registry[function["function_name"]](
+                **function["function_params"]
+            )
+            print(f"{function['function_name']} 실행 결과:", result)
+            state.set_function_result(
+                subject["subject_name"], function["function_name"], result
+            )

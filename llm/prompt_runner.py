@@ -1,7 +1,8 @@
 import json, re
 from transformers import PreTrainedModel, PreTrainedTokenizer
-from core.prompts import openning_system_prompt, function_select_prompt
+from core.prompts import openning_system_prompt, function_select_prompt, final_prompt
 from core.functions_tools import get_category_tools
+from core.query_module import ConversationState
 
 
 def generator(
@@ -19,7 +20,7 @@ def generator(
         },
         {"role": "user", "content": user_question},
     ]
-
+    print(messages)
     inputs = tokenizer.apply_chat_template(
         messages, add_generation_prompt=True, return_dict=True, return_tensors="pt"
     )
@@ -34,17 +35,15 @@ def generator(
 
 
 def find_subject_generator(
-    request,
+    state: ConversationState,
     model: PreTrainedModel,
     tokenizer: PreTrainedTokenizer,
 ):
-    user_question = request.question
-    user_question_name = request.qunestion_name
-    user_question_id = request.account_id
+
     response = generator(
-        user_question,
+        state.question_body,
         openning_system_prompt.format(
-            account_id=user_question_id, question_name=user_question_name
+            account_id=state.user_id, question_name=state.question_title
         ),
         [],
         model,
@@ -58,38 +57,34 @@ def find_subject_generator(
         json_str = match.group(1)
         try:
             tool_call = json.loads(json_str)
-            print("Parsed Tool Call:", tool_call)
-            return tool_call
+            for subject in tool_call:
+                state.add_subject(subject["subject"], subject["parse"])
+
         except json.JSONDecodeError as e:
             print("JSON 디코딩 오류:", e)
-            return None
+            state.subjects = None
     else:
         print("JSON 형식이 아닙니다.")
-        return None
+        state.subjects = None
 
 
 def select_functions_generator(
-    request,
-    subject_json: list,
+    state: ConversationState,
     model: PreTrainedModel,
     tokenizer: PreTrainedTokenizer,
 ):
-    user_question = request.question
-    user_question_name = request.qunestion_name
-    user_question_id = request.account_id
+    for subject in state.subjects:
+        subject_name = subject["subject_name"]
 
-    function_name_list = []
-    function_param_list = []
-    for subject in subject_json:
-        subject_name = subject["subject"]
         function_tool = get_category_tools(subject_name)
         if function_tool:
             response = generator(
-                user_question,
+                state.question_body,
                 function_select_prompt.format(
-                    account_id=user_question_id,
-                    question_name=user_question_name,
+                    account_id=state.user_id,
+                    question_name=state.question_title,
                     subject_name=subject_name,
+                    subject_description=subject["subject_description"],
                 ),
                 function_tool,
                 model,
@@ -101,28 +96,37 @@ def select_functions_generator(
                     match = re.search(r"```json\n(.*?)```", response, re.DOTALL)
                     cleaned = match.group(1)
                     tool_call = json.loads(cleaned)
-                    function_name_list.append(tool_call["name"])
-                    function_param_list.append(tool_call["parameters"])
+                    state.add_function_to_subject(
+                        subject_name,
+                        tool_call["name"],
+                        tool_call["parameters"],
+                    )
+                    print(
+                        subject_name,
+                        tool_call["name"],
+                        tool_call["parameters"],
+                    )
                 except json.JSONDecodeError as e:
                     print("JSON 디코딩 오류:", e)
-                    function_name_list.append(None)
-                    function_param_list.append(None)
+                    state.subjects = None
         else:
-            function_name_list.append(None)
-            function_param_list.append(None)
-    return function_name_list, function_param_list
+            print("해당 주제에 대한 함수가 없습니다.")
+            state.subjects = None
 
 
-# def make_report_generator(
-#     question: str,
-#     system_porompt: str,
-#     function_list: list,
-#     return_message: str,
-#     model: PreTrainedModel,
-#     tokenizer: PreTrainedTokenizer,
-# ):
-#     response = generator(
-#         question, system_porompt(function_list, return_message), [], model, tokenizer
-#     )
-
-#     return response
+def make_report_generator(
+    state: ConversationState,
+    model: PreTrainedModel,
+    tokenizer: PreTrainedTokenizer,
+):
+    prompt_info = state.to_summary_prompt()
+    print("최종 모델 입력 자료 : ", prompt_info)
+    response = generator(
+        state.question_body,
+        final_prompt.format(info=prompt_info),
+        (),
+        model,
+        tokenizer,
+    )
+    print("최종 보고서 모델 응답:", response)
+    return response
