@@ -1,4 +1,7 @@
 #  onprem_AI_agent  
+
+**[🇺🇸 English README](./README_EN.md)**
+
 onprem_AI_agent는 게임 고객 문의를 자동화하여 처리하는 온프레미스 AI 에이전트입니다. 이 프로젝트는 OpenAI의 Function Calling 기능을 활용하여, 고객의 문의를 분석하고 적절한 함수를 호출하여 자동으로 응답을 생성하는 시스템을 구축하는 것을 목표로 합니다.
 
 #  프로젝트 개요  
